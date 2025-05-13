@@ -1,15 +1,13 @@
 #pragma once
 
 #include "Particle.h"
+#include "util.h"
+
+#include "../lib/Color_Space.h"
+#include "config.h"
+
 #include <SFML/Graphics.hpp>
-
 #include <iostream>
-
-inline int getRandOddInt(int const min, int const max)
-{
-    int const randInt = getRandInt(min, max);
-    return randInt % 2 ? randInt : randInt - 1;
-}
 
 struct Engine {
     Engine();
@@ -22,6 +20,9 @@ struct Engine {
     std::vector<Particle> m_particles;
     float m_particleAccumulator;
 
+    size_t m_currColorIdx;
+    std::vector<sf::Color> m_colors;
+
     void populateModels();
     void input(float dtAsSeconds);
     void update(float dtAsSeconds);
@@ -31,6 +32,9 @@ struct Engine {
 inline Engine::Engine()
     : m_modelCount(MODEL_VARIATIONS)
     , m_particleAccumulator(0.f)
+    , m_currColorIdx(0)
+    , m_colors(clrspc::get_rainbow_colors(PARTICLES_PER_SECOND * SECONDS_PER_RAINBOW_CYCLE))
+
 {
     m_window.create(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), WINDOW_TITLE);
 
@@ -66,7 +70,10 @@ inline void Engine::input(float dtAsSeconds)
         m_particleAccumulator += PARTICLES_PER_SECOND * dtAsSeconds;
 
         while (m_particleAccumulator >= 1.f) {
-            m_particles.emplace_back(Particle(getRandInt(0, m_modelCount - 1), mousePos));
+            m_particles.emplace_back(
+                Particle(getRandInt(0, m_modelCount - 1), m_colors[m_currColorIdx], mousePos));
+
+            m_currColorIdx = (m_currColorIdx + 1) % m_colors.size();
             m_particleAccumulator -= 1.f;
         }
     } else {
