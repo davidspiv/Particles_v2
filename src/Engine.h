@@ -20,6 +20,7 @@ struct Engine {
     std::vector<Particle> m_particles;
     float m_particleAccumulator;
 
+    sf::Shader m_tintShader;
     size_t m_currColorIdx;
     std::vector<sf::Color> m_colors;
 
@@ -47,6 +48,10 @@ inline Engine::Engine()
         static_cast<int>(desktop.height / 2 - WINDOW_HEIGHT / 2) });
 
     m_window.setFramerateLimit(TARGET_FPS);
+
+    if (!m_tintShader.loadFromFile("shaders/color_tint.frag", sf::Shader::Fragment)) {
+        throw std::runtime_error("Failed to load color tint shader");
+    }
 }
 
 inline void Engine::input(float dtAsSeconds)
@@ -98,15 +103,30 @@ inline void Engine::update(float dtAsSeconds)
 inline void Engine::draw()
 {
     m_window.clear();
+
     for (auto const& particle : m_particles) {
         sf::RenderStates states;
         states.transform.translate(particle.m_pos.x, particle.m_pos.y);
         states.transform.rotate(particle.m_deg);
+
+        // Assign texture and shader
+        states.shader = &m_tintShader;
+
+        // Convert sf::Color to normalized vec4
+        sf::Glsl::Vec4 tintColor(particle.m_color2.r / 255.f, particle.m_color2.g / 255.f,
+            particle.m_color2.b / 255.f, particle.m_color2.a / 255.f);
+
+        // Set shader uniforms
+        m_tintShader.setUniform("tint", tintColor);
+        m_tintShader.setUniform("radius", 0.f);
+        m_tintShader.setUniform("edge", 20.f);
+
+        // Draw model using shader
         m_window.draw(m_models.at(particle.m_modelIdx), states);
     }
+
     m_window.display();
 }
-
 inline void Engine::populateModels()
 {
 
@@ -116,7 +136,7 @@ inline void Engine::populateModels()
         double theta = getRandInt(-180, 180) * (M_PI / 180.f);
         sf::VertexArray shape(sf::TriangleFan, numPoints + 1);
 
-        double baseRadius = getRandInt(10, 20); // Some base size
+        double baseRadius = getRandInt(2, 5); // Some base size
         double outerRadius = baseRadius;
         double innerRadius = baseRadius * .6f; // Or some fixed thickness
 
@@ -126,7 +146,10 @@ inline void Engine::populateModels()
             double dx = r * std::cos(theta);
             double dy = r * std::sin(theta);
 
-            shape[j] = sf::Vector2f(0 + dx, 0 + dy);
+            shape[j].position = sf::Vector2f(dx, dy);
+
+            // Use texCoords as local (model) position
+            shape[j].texCoords = sf::Vector2f(dx, dy);
 
             theta += dTheta;
         }
