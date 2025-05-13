@@ -5,24 +5,32 @@
 
 #include <iostream>
 
-struct Engine {
+inline int getRandOddInt(int const min, int const max)
+{
+    int const randInt = getRandInt(min, max);
+    return randInt % 2 ? randInt : randInt - 1;
+}
 
+struct Engine {
     Engine();
     void run();
 
     sf::RenderWindow m_window;
 
     size_t const m_modelCount;
-    std::vector<sf::RectangleShape> m_models;
+    std::vector<sf::VertexArray> m_models;
     std::vector<Particle> m_particles;
+    float m_particleAccumulator;
 
-    void input();
+    void populateModels();
+    void input(float dtAsSeconds);
     void update(float dtAsSeconds);
     void draw();
 };
 
 inline Engine::Engine()
-    : m_modelCount(10)
+    : m_modelCount(MODEL_VARIATIONS)
+    , m_particleAccumulator(0.f)
 {
     m_window.create(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), WINDOW_TITLE);
 
@@ -37,7 +45,7 @@ inline Engine::Engine()
     m_window.setFramerateLimit(TARGET_FPS);
 }
 
-inline void Engine::input()
+inline void Engine::input(float dtAsSeconds)
 {
     sf::Event event;
 
@@ -51,16 +59,18 @@ inline void Engine::input()
         }
     }
 
-    // sf::Vector2i const mousePos = sf::Mouse::getPosition(m_window);
     bool const mouseLeftPressed = sf::Mouse::isButtonPressed(sf::Mouse::Left);
 
     if (mouseLeftPressed) {
         sf::Vector2i const mousePos = sf::Mouse::getPosition(m_window);
+        m_particleAccumulator += PARTICLES_PER_SECOND * dtAsSeconds;
 
-        for (size_t i = 0; i < 10; i++) {
-            /* code */
-            m_particles.emplace_back(mousePos, getRandInt(0, m_modelCount - 1));
+        while (m_particleAccumulator >= 1.f) {
+            m_particles.emplace_back(Particle(getRandInt(0, m_modelCount - 1), mousePos));
+            m_particleAccumulator -= 1.f;
         }
+    } else {
+        m_particleAccumulator = 0.f; // reset if mouse not held
     }
 }
 
@@ -90,22 +100,47 @@ inline void Engine::draw()
     m_window.display();
 }
 
+inline void Engine::populateModels()
+{
+
+    for (size_t i = 0; i < m_modelCount; i++) {
+        int const numPoints = getRandOddInt(10, 33);
+        double const dTheta = 2 * M_PI / (numPoints - 1);
+        double theta = getRandInt(-180, 180) * (M_PI / 180.f);
+        sf::VertexArray shape(sf::TriangleFan, numPoints + 1);
+
+        double baseRadius = getRandInt(10, 20); // Some base size
+        double outerRadius = baseRadius;
+        double innerRadius = baseRadius * .6f; // Or some fixed thickness
+
+        shape[0] = sf::Vector2f(0.f, 0.f);
+        for (int j = 1; j <= numPoints; j++) {
+            double r = (j % 2) ? innerRadius : outerRadius;
+            double dx = r * std::cos(theta);
+            double dy = r * std::sin(theta);
+
+            shape[j] = sf::Vector2f(0 + dx, 0 + dy);
+
+            theta += dTheta;
+        }
+
+        // shape[numPoints] = shape[1];
+
+        m_models.emplace_back(shape);
+    }
+}
+
 inline void Engine::run()
 {
     sf::Clock frameClock;
 
-    for (size_t i = 0; i < m_modelCount; i++) {
-        sf::RectangleShape shape
-            = sf::RectangleShape(sf::Vector2f(getRandInt(10, 20), getRandInt(10, 20)));
-        shape.setOrigin(shape.getSize() / 2.f);
-        m_models.emplace_back(shape);
-    }
+    populateModels();
 
     // ENGINE
     while (m_window.isOpen()) {
         float const dtAsSeconds = frameClock.restart().asSeconds();
 
-        input();
+        input(dtAsSeconds);
         update(dtAsSeconds);
         draw();
 
