@@ -22,7 +22,7 @@ struct Engine {
 
     sf::Shader m_tintShader;
     size_t m_currColorIdx;
-    std::vector<sf::Color> m_colors;
+    std::vector<sf::Vector3f> m_colors;
 
     void populateModels();
     void input(float dtAsSeconds);
@@ -47,7 +47,7 @@ inline Engine::Engine()
     m_window.setPosition({ static_cast<int>(desktop.width / 2 - WINDOW_WIDTH / 2),
         static_cast<int>(desktop.height / 2 - WINDOW_HEIGHT / 2) });
 
-    m_window.setFramerateLimit(TARGET_FPS);
+    // m_window.setFramerateLimit(TARGET_FPS);
 
     if (!m_tintShader.loadFromFile("shaders/color_tint.frag", sf::Shader::Fragment)) {
         throw std::runtime_error("Failed to load color tint shader");
@@ -103,30 +103,31 @@ inline void Engine::update(float dtAsSeconds)
 inline void Engine::draw()
 {
     m_window.clear();
-
     for (auto const& particle : m_particles) {
         sf::RenderStates states;
         states.transform.translate(particle.m_pos.x, particle.m_pos.y);
         states.transform.rotate(particle.m_deg);
 
-        // Assign texture and shader
+        sf::Glsl::Vec4 tintColor(
+            particle.m_colorBase.x, particle.m_colorBase.y, particle.m_colorBase.z, 1);
+
+        sf::Glsl::Vec4 centerColor(
+            particle.m_colorCenter.x, particle.m_colorCenter.y, particle.m_colorCenter.z, 1);
+
+        // set base color
+        m_tintShader.setUniform("tintColor", tintColor);
+        m_tintShader.setUniform("centerColor", centerColor);
+
+        // Set the radius and edge for blending
+        m_tintShader.setUniform("radius", 0.f); // start at center
+        m_tintShader.setUniform("edge", 10.f);  // smoothly fade for 10 units
+
         states.shader = &m_tintShader;
-
-        // Convert sf::Color to normalized vec4
-        sf::Glsl::Vec4 tintColor(particle.m_color2.r / 255.f, particle.m_color2.g / 255.f,
-            particle.m_color2.b / 255.f, particle.m_color2.a / 255.f);
-
-        // Set shader uniforms
-        m_tintShader.setUniform("tint", tintColor);
-        m_tintShader.setUniform("radius", 0.f);
-        m_tintShader.setUniform("edge", 20.f);
-
-        // Draw model using shader
         m_window.draw(m_models.at(particle.m_modelIdx), states);
     }
-
     m_window.display();
 }
+
 inline void Engine::populateModels()
 {
 
@@ -136,11 +137,14 @@ inline void Engine::populateModels()
         double theta = getRandInt(-180, 180) * (M_PI / 180.f);
         sf::VertexArray shape(sf::TriangleFan, numPoints + 1);
 
-        double baseRadius = getRandInt(2, 5); // Some base size
+        double baseRadius = getRandInt(10, 20); // Some base size
         double outerRadius = baseRadius;
         double innerRadius = baseRadius * .6f; // Or some fixed thickness
 
-        shape[0] = sf::Vector2f(0.f, 0.f);
+        // Center vertex
+        shape[0].position = sf::Vector2f(0.f, 0.f);
+        shape[0].texCoords = sf::Vector2f(0.f, 0.f); // Origin
+
         for (int j = 1; j <= numPoints; j++) {
             double r = (j % 2) ? innerRadius : outerRadius;
             double dx = r * std::cos(theta);
@@ -163,6 +167,8 @@ inline void Engine::populateModels()
 inline void Engine::run()
 {
     sf::Clock frameClock;
+    sf::Clock fpsClock; // Tracks time since last FPS log
+    int frameCount = 0;
 
     populateModels();
 
@@ -173,7 +179,16 @@ inline void Engine::run()
         input(dtAsSeconds);
         update(dtAsSeconds);
         draw();
-
         m_window.display();
+
+        // Count frame
+        ++frameCount;
+
+        // Log FPS once per second
+        if (fpsClock.getElapsedTime().asSeconds() >= 1.0f) {
+            float fps = frameCount / fpsClock.restart().asSeconds();
+            std::cout << "FPS: " << static_cast<int>(fps) << std::endl;
+            frameCount = 0;
+        }
     }
 }

@@ -8,5 +8,5 @@ constexpr size_t WINDOW_HEIGHT = 1080;
 constexpr size_t TARGET_FPS = 60;
 
 constexpr size_t MODEL_VARIATIONS = 50;
-constexpr size_t PARTICLES_PER_SECOND = 1000;
-constexpr int SECONDS_PER_RAINBOW_CYCLE = 5;
+constexpr size_t PARTICLES_PER_SECOND = 5000;
+constexpr int SECONDS_PER_RAINBOW_CYCLE = 3;

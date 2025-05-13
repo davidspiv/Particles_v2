@@ -1,12 +1,12 @@
 #pragma once
 
+#include <SFML/Graphics.hpp>
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <iostream>
 #include <string>
 #include <vector>
-#include <SFML/Graphics.hpp>
 
 #define _USE_MATH_DEFINES // for VS
 
@@ -78,11 +78,6 @@ public:
 
 // =========== Utils ==========
 
-inline sf::Uint8 to_u8(float x)
-{
-    return static_cast<sf::Uint8>(std::round(std::clamp(x, 0.f, 255.f)));
-}
-
 inline float to_radians(float const degrees) { return degrees * (M_PI / 180.f); }
 
 inline float to_degrees(float const radians) { return radians * (180.f / M_PI); }
@@ -127,11 +122,11 @@ inline Ok_Lch_Ab Ok_Lab::to_ok_lch_ab() const
 inline Rgb Ok_Lab::to_rgb() const
 
 {
-    auto normal_gamma = [](float c) {
+    auto gamma = [](float c) {
         c = std::fmax(0.f, c);
         float encoded = (c <= 0.0031308f) ? 12.92f * c
                                           : 1.055f * std::exp2f(std::log2f(c) * 0.41666f) - 0.055f;
-        return encoded * 255.f;
+        return encoded;
     };
 
     auto [L, a, b] = m_values;
@@ -148,7 +143,7 @@ inline Rgb Ok_Lab::to_rgb() const
     float g1 = -1.2684380046f * l + 2.6097574011f * m - 0.3413193965f * s;
     float b1 = -0.0041960863f * l - 0.7034186147f * m + 1.7076147010f * s;
 
-    return { normal_gamma(r1), normal_gamma(g1), normal_gamma(b1) };
+    return { gamma(r1), gamma(g1), gamma(b1) };
 }
 
 inline void Ok_Lab::print() const
@@ -186,14 +181,14 @@ inline Rgb::Rgb(float r, float g, float b)
 
 inline Ok_Lab Rgb::to_ok_lab() const
 {
-    auto normal_linear = [](float c) {
-        c = std::fmax(0.f, c / 255.f); // normalize and avoid negatives
+    auto linear = [](float c) {
+        c = std::fmax(0.f, c); // normalize and avoid negatives
         return (c <= 0.04045f) ? c / 12.92f : std::exp2f(std::log2f((c + 0.055f) / 1.055f) * 2.4f);
     };
 
-    float r_lin = normal_linear(r());
-    float g_lin = normal_linear(g());
-    float b_lin = normal_linear(b());
+    float r_lin = linear(r());
+    float g_lin = linear(g());
+    float b_lin = linear(b());
 
     float l = 0.4122214708f * r_lin + 0.5363325363f * g_lin + 0.0514459929f * b_lin;
     float m = 0.2119034982f * r_lin + 0.6806995451f * g_lin + 0.1073969566f * b_lin;
@@ -227,7 +222,7 @@ inline void Rgb::print() const
  * @return std::vector<sf::Color> A list of colors smoothly transitioning across
  * the specified portion of the rainbow.
  */
-inline std::vector<sf::Color> get_rainbow_colors(
+inline std::vector<sf::Vector3f> get_rainbow_colors(
     int sample_count, sf::Color start_color = sf::Color::Red, float rainbow_percent = 100.f)
 {
     if (sample_count < 2) {
@@ -245,7 +240,7 @@ inline std::vector<sf::Color> get_rainbow_colors(
 
     start_hue -= 20.f; // offset to match perceived color
 
-    std::vector<sf::Color> colors;
+    std::vector<sf::Vector3f> colors;
     colors.reserve(sample_count);
 
     for (int i = 0; i < sample_count; ++i) {
@@ -257,7 +252,7 @@ inline std::vector<sf::Color> get_rainbow_colors(
 
         auto const [r, g, b] = ok_lch_ab.to_ok_lab().to_rgb().get_values();
 
-        colors.push_back({ to_u8(r), to_u8(g), to_u8(b) });
+        colors.emplace_back(sf::Vector3f(r, g, b));
     }
 
     return colors;
