@@ -10,10 +10,18 @@
 #include <iostream>
 #include <sstream>
 
-struct Engine {
-    Engine();
-    void run();
+class Engine {
 
+public:
+    Engine();
+
+    void run();
+    void populateModels();
+    void input(float dtAsSeconds);
+    void update(float dtAsSeconds);
+    void draw();
+
+private:
     sf::RenderWindow m_window;
     float m_frameRate;
 
@@ -29,11 +37,6 @@ struct Engine {
 
     sf::Font m_font;
     sf::Text m_text;
-
-    void populateModels();
-    void input(float dtAsSeconds);
-    void update(float dtAsSeconds);
-    void draw();
 
     void populateParticles(sf::Vector2i const& mousePos, float const dtAsSeconds);
 };
@@ -56,7 +59,7 @@ inline Engine::Engine()
     m_window.setPosition({ static_cast<int>(desktop.width / 2 - WINDOW_WIDTH / 2),
         static_cast<int>(desktop.height / 2 - WINDOW_HEIGHT / 2) });
 
-    if (!m_tintShader.loadFromFile("shader/color_tint.frag", sf::Shader::Fragment)) {
+    if (!m_tintShader.loadFromFile(SHADER_PATH, sf::Shader::Fragment)) {
         throw std::runtime_error("Failed to load color tint shader");
     }
 

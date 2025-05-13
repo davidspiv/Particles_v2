@@ -1,5 +1,7 @@
 #pragma once
 
+#include "config.h"
+
 #include <random>
 
 inline int getRandInt(int const min, int const max)
@@ -15,7 +17,7 @@ inline int getRandOddInt(int const min, int const max)
 
 void inline loadFont(sf::Font& font, sf::Text& text)
 {
-    if (!font.loadFromFile("font/Cascadia.ttf")) {
+    if (!font.loadFromFile(FONT_PATH)) {
         throw std::runtime_error("unable to open font file");
     }
 

@@ -6,21 +6,13 @@
 #include <cmath>
 
 struct Particle {
+
     static float constexpr G = 1500; // Gravity
     static float constexpr TTL = 1;  // Time To Live
     static float constexpr SCALE = 0.99;
 
-    Particle(size_t modelIdx, sf::Vector3f color, sf::Vector2i const& mouseClickPosition)
-        : m_modelIdx(modelIdx)
-        , m_ttl(TTL)
-        , m_degreesPerSecond(getRandInt(50, 180))
-        , m_vel(sf::Vector2f(getRandInt(-500, 500), getRandInt(100, 500)))
-        , m_pos(mouseClickPosition)
-        , m_deg(getRandInt(-180, 180))
-        , m_colorBase(color)
-        , m_colorCenter(color + sf::Vector3f(.2f, .2f, .2f))
-    {
-    }
+    Particle(size_t modelIdx, sf::Vector3f color, sf::Vector2i const& mouseClickPosition);
+    void update(float dtAsSeconds);
 
     size_t m_modelIdx;
     float m_ttl;
@@ -30,9 +22,20 @@ struct Particle {
     float m_deg;
     sf::Vector3f m_colorBase;
     sf::Vector3f m_colorCenter;
-
-    void update(float dtAsSeconds);
 };
+
+inline Particle::Particle(
+    size_t modelIdx, sf::Vector3f color, sf::Vector2i const& mouseClickPosition)
+    : m_modelIdx(modelIdx)
+    , m_ttl(TTL)
+    , m_degreesPerSecond(getRandInt(50, 180))
+    , m_vel(sf::Vector2f(getRandInt(-500, 500), getRandInt(100, 500)))
+    , m_pos(mouseClickPosition)
+    , m_deg(getRandInt(-180, 180))
+    , m_colorBase(color)
+    , m_colorCenter(color + sf::Vector3f(.2f, .2f, .2f))
+{
+}
 
 inline void Particle::update(float dtAsSeconds)
 {
