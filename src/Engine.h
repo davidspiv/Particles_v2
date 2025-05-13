@@ -56,7 +56,11 @@ inline void Engine::input()
 
     if (mouseLeftPressed) {
         sf::Vector2i const mousePos = sf::Mouse::getPosition(m_window);
-        m_particles.emplace_back(mousePos, getRandInt(0, m_modelCount - 1));
+
+        for (size_t i = 0; i < 10; i++) {
+            /* code */
+            m_particles.emplace_back(mousePos, getRandInt(0, m_modelCount - 1));
+        }
     }
 }
 

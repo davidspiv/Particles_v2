@@ -10,8 +10,8 @@ inline int getRandInt(int const min, int const max)
 }
 
 struct Particle {
-    static float constexpr G = 1000;  // Gravity
-    static float constexpr TTL = 2.0; // Time To Live
+    static float constexpr G = 2000;  // Gravity
+    static float constexpr TTL = 1.5; // Time To Live
     static float constexpr SCALE = 0.99;
 
     Particle(sf::Vector2i const& mouseClickPosition, size_t modelIdx)
