@@ -17,6 +17,8 @@ struct Engine {
     sf::RenderWindow m_window;
     float m_frameRate;
 
+    sf::Vector2i m_prevMousePos;
+
     size_t const m_modelCount;
     std::vector<sf::VertexArray> m_models;
     std::vector<Particle> m_particles;
@@ -32,10 +34,13 @@ struct Engine {
     void input(float dtAsSeconds);
     void update(float dtAsSeconds);
     void draw();
+
+    void populateParticles(sf::Vector2i const& mousePos, float const dtAsSeconds);
 };
 
 inline Engine::Engine()
     : m_frameRate(0)
+    , m_prevMousePos(sf::Vector2i(0, 0))
     , m_modelCount(MODEL_VARIATIONS)
     , m_currColorIdx(0l)
     , m_colors(clrspc::get_rainbow_colors(PARTICLES_PER_SECOND * SECONDS_PER_RAINBOW_CYCLE))
@@ -58,33 +63,43 @@ inline Engine::Engine()
     loadFont(m_font, m_text);
 }
 
+inline void Engine::populateParticles(sf::Vector2i const& mousePos, float const dtAsSeconds)
+{
+    size_t const particleCount
+        = static_cast<size_t>(std::round(PARTICLES_PER_SECOND * dtAsSeconds));
+
+    for (size_t i = 0; i < particleCount; ++i) {
+        sf::Vector2i particlePos = mousePos;
+
+        if (m_prevMousePos != sf::Vector2i(0, 0)) {
+            float t = static_cast<float>(i) / particleCount;
+            sf::Vector2f interpolatedPos
+                = (1 - t) * sf::Vector2f(m_prevMousePos) + t * sf::Vector2f(mousePos);
+            particlePos = static_cast<sf::Vector2i>(interpolatedPos);
+        }
+
+        m_particles.emplace_back(
+            getRandInt(0, m_modelCount - 1), m_colors[m_currColorIdx], particlePos);
+
+        m_currColorIdx = (m_currColorIdx + 1) % m_colors.size();
+    }
+}
+
 inline void Engine::input(float dtAsSeconds)
 {
     sf::Event event;
-
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)) {
-        m_window.close();
-    }
-
     while (m_window.pollEvent(event)) {
-        if (event.type == sf::Event::Closed) {
+        if (event.type == sf::Event::Closed || sf::Keyboard::isKeyPressed(sf::Keyboard::Escape)) {
             m_window.close();
         }
     }
 
-    bool const mouseLeftPressed = sf::Mouse::isButtonPressed(sf::Mouse::Left);
-    double particleBuffer = 0;
-    if (mouseLeftPressed) {
+    if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
         sf::Vector2i const mousePos = sf::Mouse::getPosition(m_window);
-        particleBuffer += PARTICLES_PER_SECOND * dtAsSeconds;
-
-        while (particleBuffer >= 1.f) {
-            m_particles.emplace_back(
-                Particle(getRandInt(0, m_modelCount - 1), m_colors[m_currColorIdx], mousePos));
-
-            m_currColorIdx = (m_currColorIdx + 1) % m_colors.size();
-            particleBuffer -= 1.f;
-        }
+        populateParticles(mousePos, dtAsSeconds);
+        m_prevMousePos = mousePos;
+    } else {
+        m_prevMousePos = sf::Vector2i(0, 0);
     }
 }
 

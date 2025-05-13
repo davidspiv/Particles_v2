@@ -6,8 +6,8 @@
 #include <cmath>
 
 struct Particle {
-    static float constexpr G = 1500;  // Gravity
-    static float constexpr TTL = 1.4; // Time To Live
+    static float constexpr G = 1500; // Gravity
+    static float constexpr TTL = 1;  // Time To Live
     static float constexpr SCALE = 0.99;
 
     Particle(size_t modelIdx, sf::Vector3f color, sf::Vector2i const& mouseClickPosition)
