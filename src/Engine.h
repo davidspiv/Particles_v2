@@ -1,28 +1,32 @@
 #pragma once
 
+#include "../lib/Color_Space.h"
 #include "Particle.h"
+#include "config.h"
 #include "util.h"
 
-#include "../lib/Color_Space.h"
-#include "config.h"
-
 #include <SFML/Graphics.hpp>
+#include <iomanip>
 #include <iostream>
+#include <sstream>
 
 struct Engine {
     Engine();
     void run();
 
     sf::RenderWindow m_window;
+    float m_frameRate;
 
     size_t const m_modelCount;
     std::vector<sf::VertexArray> m_models;
     std::vector<Particle> m_particles;
-    float m_particleAccumulator;
 
     sf::Shader m_tintShader;
     size_t m_currColorIdx;
     std::vector<sf::Vector3f> m_colors;
+
+    sf::Font m_font;
+    sf::Text m_text;
 
     void populateModels();
     void input(float dtAsSeconds);
@@ -31,13 +35,13 @@ struct Engine {
 };
 
 inline Engine::Engine()
-    : m_modelCount(MODEL_VARIATIONS)
-    , m_particleAccumulator(0.f)
-    , m_currColorIdx(0)
+    : m_frameRate(0)
+    , m_modelCount(MODEL_VARIATIONS)
+    , m_currColorIdx(0l)
     , m_colors(clrspc::get_rainbow_colors(PARTICLES_PER_SECOND * SECONDS_PER_RAINBOW_CYCLE))
-
 {
     m_window.create(sf::VideoMode(WINDOW_WIDTH, WINDOW_HEIGHT), WINDOW_TITLE);
+    m_window.setFramerateLimit(TARGET_FPS);
 
     if (!m_window.isOpen()) {
         throw std::runtime_error("Failed to create SFML window");
@@ -47,11 +51,11 @@ inline Engine::Engine()
     m_window.setPosition({ static_cast<int>(desktop.width / 2 - WINDOW_WIDTH / 2),
         static_cast<int>(desktop.height / 2 - WINDOW_HEIGHT / 2) });
 
-    // m_window.setFramerateLimit(TARGET_FPS);
-
-    if (!m_tintShader.loadFromFile("shaders/color_tint.frag", sf::Shader::Fragment)) {
+    if (!m_tintShader.loadFromFile("shader/color_tint.frag", sf::Shader::Fragment)) {
         throw std::runtime_error("Failed to load color tint shader");
     }
+
+    loadFont(m_font, m_text);
 }
 
 inline void Engine::input(float dtAsSeconds)
@@ -69,20 +73,18 @@ inline void Engine::input(float dtAsSeconds)
     }
 
     bool const mouseLeftPressed = sf::Mouse::isButtonPressed(sf::Mouse::Left);
-
+    double particleBuffer = 0;
     if (mouseLeftPressed) {
         sf::Vector2i const mousePos = sf::Mouse::getPosition(m_window);
-        m_particleAccumulator += PARTICLES_PER_SECOND * dtAsSeconds;
+        particleBuffer += PARTICLES_PER_SECOND * dtAsSeconds;
 
-        while (m_particleAccumulator >= 1.f) {
+        while (particleBuffer >= 1.f) {
             m_particles.emplace_back(
                 Particle(getRandInt(0, m_modelCount - 1), m_colors[m_currColorIdx], mousePos));
 
             m_currColorIdx = (m_currColorIdx + 1) % m_colors.size();
-            m_particleAccumulator -= 1.f;
+            particleBuffer -= 1.f;
         }
-    } else {
-        m_particleAccumulator = 0.f; // reset if mouse not held
     }
 }
 
@@ -98,6 +100,12 @@ inline void Engine::update(float dtAsSeconds)
             it = m_particles.erase(it);
         }
     }
+
+    std::stringstream ostream;
+    ostream << std::setw(11) << "Particles: " << m_particles.size() << '\n'
+            << std::setw(11) << "FPS: " << std::fixed << std::setprecision(4)
+            << m_frameRate - dtAsSeconds;
+    m_text.setString(ostream.str());
 }
 
 inline void Engine::draw()
@@ -125,6 +133,8 @@ inline void Engine::draw()
         states.shader = &m_tintShader;
         m_window.draw(m_models.at(particle.m_modelIdx), states);
     }
+
+    m_window.draw(m_text);
     m_window.display();
 }
 
@@ -167,28 +177,20 @@ inline void Engine::populateModels()
 inline void Engine::run()
 {
     sf::Clock frameClock;
-    sf::Clock fpsClock; // Tracks time since last FPS log
-    int frameCount = 0;
 
     populateModels();
 
-    // ENGINE
     while (m_window.isOpen()) {
         float const dtAsSeconds = frameClock.restart().asSeconds();
+
+        if (dtAsSeconds > 0.f) {
+            m_frameRate = 1.f / dtAsSeconds;
+        }
 
         input(dtAsSeconds);
         update(dtAsSeconds);
         draw();
+
         m_window.display();
-
-        // Count frame
-        ++frameCount;
-
-        // Log FPS once per second
-        if (fpsClock.getElapsedTime().asSeconds() >= 1.0f) {
-            float fps = frameCount / fpsClock.restart().asSeconds();
-            std::cout << "FPS: " << static_cast<int>(fps) << std::endl;
-            frameCount = 0;
-        }
     }
 }
