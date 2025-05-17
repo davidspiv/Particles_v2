@@ -98,9 +98,10 @@ inline void Engine::input(float dtAsSeconds)
     }
 
     if (sf::Mouse::isButtonPressed(sf::Mouse::Left)) {
-        sf::Vector2i const mousePos = sf::Mouse::getPosition(m_window);
-        populateParticles(mousePos, dtAsSeconds);
-        m_prevMousePos = mousePos;
+        sf::Vector2i const mouse_pos = static_cast<sf::Vector2i>(
+            m_window.mapPixelToCoords(sf::Mouse::getPosition(m_window)));
+        populateParticles(mouse_pos, dtAsSeconds);
+        m_prevMousePos = mouse_pos;
     } else {
         m_prevMousePos = sf::Vector2i(0, 0);
     }
